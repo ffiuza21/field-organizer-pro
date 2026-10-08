@@ -49,8 +49,8 @@ const isText = (t: FieldType) => t === "short" || t === "long";
 
 type Field = {
   id: string; name: string; type: FieldType; origin: "standard" | "custom";
-  structural?: boolean; required: boolean; visible: boolean;
-  min?: number; max?: number; options?: string[];
+  structural?: boolean | undefined; required: boolean; visible: boolean;
+  min?: number | undefined; max?: number | undefined; options?: string[] | undefined;
 };
 
 const STANDARD: Omit<Field, "id" | "required" | "visible">[] = [
@@ -437,7 +437,7 @@ function Group({ title, desc, children }: { title: string; desc?: string; childr
     </section>
   );
 }
-function Label({ text, hint, children }: { text: string; hint?: string; children: React.ReactNode }) {
+function Label({ text, hint, children }: { text: string; hint?: string | undefined; children: React.ReactNode }) {
   return (
     <label className="block space-y-1.5">
       <span className="text-sm font-medium text-foreground">{text}</span>
@@ -454,7 +454,7 @@ function Toggle({ label, desc, checked, onChange }: { label: string; desc: strin
     </div>
   );
 }
-function NumInput({ value, onChange, placeholder }: { value?: number; onChange: (v?: number) => void; placeholder: string }) {
+function NumInput({ value, onChange, placeholder }: { value?: number | undefined; onChange: (v?: number) => void; placeholder: string }) {
   return (
     <input type="number" min={0} value={value ?? ""} placeholder={placeholder} onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
       className="w-full rounded-md border border-input bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25" />
