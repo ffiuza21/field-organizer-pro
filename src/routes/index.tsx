@@ -92,13 +92,13 @@ function Index() {
     setFields((fs) => {
       const i = fs.findIndex((f) => f.id === id), j = i + dir;
       if (j < 0 || j >= fs.length) return fs;
-      const c = [...fs]; [c[i], c[j]] = [c[j], c[i]]; return c;
+      const c = [...fs]; [c[i], c[j]] = [c[j]!, c[i]!]; return c;
     });
   const dropOn = (targetId: string) => {
     if (!dragId || dragId === targetId) return;
     setFields((fs) => {
       const c = [...fs]; const from = c.findIndex((f) => f.id === dragId);
-      const [item] = c.splice(from, 1); c.splice(c.findIndex((f) => f.id === targetId), 0, item); return c;
+      const [item] = c.splice(from, 1); c.splice(c.findIndex((f) => f.id === targetId), 0, item!); return c;
     });
   };
   const addCustom = () => {
