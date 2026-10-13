@@ -437,7 +437,7 @@ function PreviewPanel({ state, mode, fixed }: { state: BrandState; mode: Mode; f
   const s = state.semantic;
   const [modal, setModal] = useState(false);
   const [toggle, setToggle] = useState(true);
-  const st: Record<string, CSSProperties> = {
+  const st = {
     root: { background: t.bg, color: t.text, fontFamily: font.body, borderColor: t.border },
     card: { background: t.card, borderColor: t.border },
     field: { background: t.field, borderColor: t.border, color: t.text },
