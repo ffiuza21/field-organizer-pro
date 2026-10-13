@@ -513,7 +513,7 @@ function PreviewPanel({ state, mode, fixed }: { state: BrandState; mode: Mode; f
             ))}
           </div>
           {/* list */}
-          <div className="overflow-hidden rounded-lg border text-[11px]" style={st.card}>
+          <div className="mt-6 rounded-lg border text-[11px]" style={st.card}>
             {["Matrícula 45.210", "Contrato social", "Balanço 2025"].map((l, i) => (
               <div key={l} className="flex items-center justify-between border-b px-3 py-1.5 last:border-0" style={{ borderColor: t.border, background: i === 1 ? t.hover : undefined }}>
                 <span>{l}{i === 1 && <span className="ml-1" style={{ color: t.textAux }}>(hover)</span>}</span>
