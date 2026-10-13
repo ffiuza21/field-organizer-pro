@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   AlignLeft, ArrowDown, ArrowUp, Calendar, CheckSquare, ChevronRight, Coins, Eye, EyeOff,
@@ -258,6 +258,7 @@ function Index() {
         </div>
       </div>
 
+      <Link to="/identidade-visual" className="fixed bottom-4 right-4 z-[70] rounded-md bg-card px-3 py-2 text-xs font-medium text-primary shadow-lg hover:bg-muted">Ver tela: Identidade visual →</Link>
       {toast && <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-md bg-foreground px-4 py-2.5 text-sm text-background shadow-lg">{toast}</div>}
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>

@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   AlertTriangle, Check, CheckCircle2, ChevronRight, CircleAlert, FileText, FolderOpen, Home,
-  ImageUp, Info, LayoutDashboard, Monitor, Moon, Palette, RotateCcw, Sparkles, Sun, Type,
+  ImageUp, Info, Monitor, Moon, Palette, RotateCcw, Sparkles, Sun, Type,
   Wand2, X, XCircle, Users, Settings, Eye, Lock, Pencil,
 } from "lucide-react";
 import {
@@ -235,7 +235,7 @@ function Card({ title, desc, children, aside }: { title: string; desc?: string; 
 function ColorField({ label, hint, value, onChange, swatches }: { label: string; hint?: string; value: string; onChange: (v: string) => void; swatches?: string[] }) {
   const [text, setText] = useState(value);
   const valid = /^#[0-9a-fA-F]{6}$/.test(text);
-  if (valid && text.toLowerCase() !== value.toLowerCase() && document.activeElement?.getAttribute("data-hex") !== label) setText(value);
+  useEffect(() => { setText((t) => (t.toLowerCase() === value.toLowerCase() ? t : value)); }, [value]);
   return (
     <div>
       <p className="text-sm font-medium">{label}</p>
@@ -553,4 +553,3 @@ function PField({ label, value, style }: { label: string; value: string; style: 
   );
 }
 
-export { LayoutDashboard };
