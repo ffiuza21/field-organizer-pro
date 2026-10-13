@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   AlertTriangle, Check, CheckCircle2, ChevronRight, CircleAlert, FileText, FolderOpen, Home,
-  ImageUp, Info, LayoutDashboard, Monitor, Moon, Palette, RotateCcw, Sparkles, Sun, Type,
+  ImageUp, Info, Monitor, Moon, Palette, RotateCcw, Sparkles, Sun, Type,
   Wand2, X, XCircle, Users, Settings, Eye, Lock, Pencil,
 } from "lucide-react";
 import {
@@ -235,7 +235,7 @@ function Card({ title, desc, children, aside }: { title: string; desc?: string; 
 function ColorField({ label, hint, value, onChange, swatches }: { label: string; hint?: string; value: string; onChange: (v: string) => void; swatches?: string[] }) {
   const [text, setText] = useState(value);
   const valid = /^#[0-9a-fA-F]{6}$/.test(text);
-  if (valid && text.toLowerCase() !== value.toLowerCase() && document.activeElement?.getAttribute("data-hex") !== label) setText(value);
+  useEffect(() => { setText((t) => (t.toLowerCase() === value.toLowerCase() ? t : value)); }, [value]);
   return (
     <div>
       <p className="text-sm font-medium">{label}</p>
@@ -437,7 +437,7 @@ function PreviewPanel({ state, mode, fixed }: { state: BrandState; mode: Mode; f
   const s = state.semantic;
   const [modal, setModal] = useState(false);
   const [toggle, setToggle] = useState(true);
-  const st: Record<string, CSSProperties> = {
+  const st = {
     root: { background: t.bg, color: t.text, fontFamily: font.body, borderColor: t.border },
     card: { background: t.card, borderColor: t.border },
     field: { background: t.field, borderColor: t.border, color: t.text },
@@ -513,7 +513,7 @@ function PreviewPanel({ state, mode, fixed }: { state: BrandState; mode: Mode; f
             ))}
           </div>
           {/* list */}
-          <div className="overflow-hidden rounded-lg border text-[11px]" style={st.card}>
+          <div className="mt-6 rounded-lg border text-[11px]" style={st.card}>
             {["Matrícula 45.210", "Contrato social", "Balanço 2025"].map((l, i) => (
               <div key={l} className="flex items-center justify-between border-b px-3 py-1.5 last:border-0" style={{ borderColor: t.border, background: i === 1 ? t.hover : undefined }}>
                 <span>{l}{i === 1 && <span className="ml-1" style={{ color: t.textAux }}>(hover)</span>}</span>
@@ -553,4 +553,3 @@ function PField({ label, value, style }: { label: string; value: string; style: 
   );
 }
 
-export { LayoutDashboard };

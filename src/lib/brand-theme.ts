@@ -50,7 +50,7 @@ export const DEFAULT_BRAND: BrandState = {
   },
 };
 
-type TokenDef = { id: string; label: string; hint: string; group: string };
+type TokenDef = { id: TokenKey; label: string; hint: string; group: string };
 const DEFS: TokenDef[] = [
   { id: "brand", label: "Cor de marca no tema", hint: "Botões primários e seleção", group: "Marca" },
   { id: "bg", label: "Fundo da aplicação", hint: "Atrás de todas as telas", group: "Superfícies" },
@@ -83,7 +83,9 @@ export const contrast = (a: string, b: string) => { const l1 = lum(a), l2 = lum(
 const hue = (h: string) => { const [r, g, b] = toRgb(h).map((v) => v / 255) as [number, number, number]; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; if (!d) return { h: 0, s: 0 }; let hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh *= 60; if (hh < 0) hh += 360; return { h: hh, s: d / (1 - Math.abs(mx + mn - 1)) }; };
 export const isSimilar = (a: string, b: string) => { const x = hue(a), y = hue(b); const dh = Math.min(Math.abs(x.h - y.h), 360 - Math.abs(x.h - y.h)); return x.s > 0.35 && y.s > 0.35 && dh < 22; };
 
-export function autoTheme(p: string, mode: Mode): Record<string, string> {
+export type TokenKey = "brand"|"bg"|"card"|"field"|"subtle"|"hover"|"selected"|"text"|"textSecondary"|"textAux"|"textDisabled"|"border"|"borderStrong"|"tooltip"|"overlay"|"nav"|"navSelected";
+export type Theme = Record<TokenKey, string> & { onBrand: string; navText: string; tooltipText: string };
+export function autoTheme(p: string, mode: Mode): Record<TokenKey, string> {
   if (mode === "light") return {
     brand: p, bg: mix(p, "#FFFFFF", 0.965), card: "#FFFFFF", field: "#FFFFFF", subtle: mix(p, "#FFFFFF", 0.94),
     hover: mix(p, "#FFFFFF", 0.93), selected: mix(p, "#FFFFFF", 0.87), text: mix(p, "#140F1A", 0.8),
@@ -100,14 +102,14 @@ export function autoTheme(p: string, mode: Mode): Record<string, string> {
   };
 }
 
-export function resolveTheme(s: BrandState, mode: Mode) {
-  const t = { ...autoTheme(s.primary, mode), ...(mode === "light" ? s.light : s.dark) } as Record<string, string>;
+export function resolveTheme(s: BrandState, mode: Mode): Theme {
+  const t = { ...autoTheme(s.primary, mode), ...(mode === "light" ? s.light : s.dark) } as Record<TokenKey, string>;
   return {
     ...t,
     onBrand: contrast(t.brand!, "#FFFFFF") >= contrast(t.brand!, "#140F1A") ? "#FFFFFF" : "#140F1A",
     navText: contrast(t.nav!, "#FFFFFF") >= 4.5 ? "#FFFFFF" : "#140F1A",
     tooltipText: contrast(t.tooltip!, "#FFFFFF") >= 4.5 ? "#FFFFFF" : "#140F1A",
-  } as Record<string, string> & { onBrand: string };
+  };
 }
 
 export type Check = { id: string; level: "warn" | "block"; title: string; message: string };
