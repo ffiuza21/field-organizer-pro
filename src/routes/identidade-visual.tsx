@@ -19,6 +19,7 @@ import {
   type BrandState, type Mode, type SemanticKey, DEFAULT_BRAND, FONTS, LIGHT_TOKENS, DARK_TOKENS,
   SEMANTIC_LABELS, resolveTheme, runChecks, contrast,
 } from "@/lib/brand-theme";
+import { activateProfile, createDefaultProfile, type BrandProfile } from "@/lib/brand-profiles";
 
 export const Route = createFileRoute("/identidade-visual")({
   head: () => ({
@@ -34,7 +35,6 @@ export const Route = createFileRoute("/identidade-visual")({
 
 type Section = "brand" | "light" | "dark" | "semantic" | "preview";
 type Status = "clean" | "dirty" | "saved" | "restored";
-type BrandProfile = { id: string; name: string; state: BrandState; active: boolean; updatedAt: string };
 
 const INITIAL_PROFILES: BrandProfile[] = [
   { id: "principal", name: "Identidade principal", state: { ...DEFAULT_BRAND, name: "Identidade principal" }, active: true, updatedAt: "Hoje, 12:40" },
@@ -83,7 +83,7 @@ function BrandPage() {
   };
   const publish = () => {
     if (!editingId) return;
-    setProfiles((items) => items.map((profile) => profile.id === editingId ? { ...profile, name: state.name, state, active: true, updatedAt: "Agora" } : { ...profile, active: false }));
+    setProfiles((items) => activateProfile(items, editingId, state));
     setPublished(state); setLastSaved(state); setStatus("clean"); flash("Perfil aplicado para toda a organização.");
   };
   const restore = () => { setState(DEFAULT_BRAND); setStatus("restored"); setConfirmRestore(false); flash("Tema padrão do AuditFlow restaurado. Publique para aplicar."); };
@@ -100,10 +100,12 @@ function BrandPage() {
     setCreateOpen(true);
   };
   const createProfile = () => {
-    const source = profiles.find((profile) => profile.id === baseId)?.state ?? DEFAULT_BRAND;
     const name = newName.trim() || "Nova identidade visual";
     const id = `perfil-${Date.now()}`;
-    const profile: BrandProfile = { id, name, state: { ...source, name }, active: false, updatedAt: "Agora" };
+    const source = profiles.find((profile) => profile.id === baseId)?.state;
+    const profile = source
+      ? { id, name, state: { ...source, name }, active: false, updatedAt: "Agora" }
+      : createDefaultProfile(id, name);
     setProfiles((items) => [...items, profile]); setCreateOpen(false); openProfile(profile);
   };
   const leaveEditor = () => {
