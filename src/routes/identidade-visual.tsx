@@ -1,14 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
-  AlertTriangle, Check, CheckCircle2, ChevronRight, CircleAlert, FileText, FolderOpen, Home,
+  AlertTriangle, ArrowLeft, Check, CheckCircle2, ChevronRight, CircleAlert, Copy, FileText, FolderOpen, Home,
   ImageUp, Info, Monitor, Moon, Palette, RotateCcw, Sparkles, Sun, Type,
-  Wand2, X, XCircle, Users, Settings, Eye, Lock, Pencil,
+  Wand2, X, XCircle, Users, Settings, Eye, Lock, Pencil, Plus,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   type BrandState, type Mode, type SemanticKey, DEFAULT_BRAND, FONTS, LIGHT_TOKENS, DARK_TOKENS,
@@ -29,6 +34,13 @@ export const Route = createFileRoute("/identidade-visual")({
 
 type Section = "brand" | "light" | "dark" | "semantic" | "preview";
 type Status = "clean" | "dirty" | "saved" | "restored";
+type BrandProfile = { id: string; name: string; state: BrandState; active: boolean; updatedAt: string };
+
+const INITIAL_PROFILES: BrandProfile[] = [
+  { id: "principal", name: "Identidade principal", state: { ...DEFAULT_BRAND, name: "Identidade principal" }, active: true, updatedAt: "Hoje, 12:40" },
+  { id: "relatorios", name: "Relatórios institucionais", state: { ...DEFAULT_BRAND, name: "Relatórios institucionais", primary: "#0F3D5E", secondary: "#C08A2E" }, active: false, updatedAt: "8 out, 16:15" },
+  { id: "projetos", name: "Projetos especiais", state: { ...DEFAULT_BRAND, name: "Projetos especiais", primary: "#1F5135", secondary: "#2E8B7A" }, active: false, updatedAt: "2 out, 09:30" },
+];
 
 const SECTIONS: { id: Section; label: string; desc: string; icon: typeof Palette; advanced?: boolean }[] = [
   { id: "brand", label: "Marca e tipografia", desc: "Logo, cores e fonte", icon: Palette },
@@ -39,6 +51,9 @@ const SECTIONS: { id: Section; label: string; desc: string; icon: typeof Palette
 ];
 
 function BrandPage() {
+  const [profiles, setProfiles] = useState<BrandProfile[]>(INITIAL_PROFILES);
+  const [view, setView] = useState<"gallery" | "editor">(INITIAL_PROFILES.length === 0 ? "editor" : "gallery");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [published, setPublished] = useState<BrandState>(DEFAULT_BRAND);
   const [state, setState] = useState<BrandState>(DEFAULT_BRAND);
   const [lastSaved, setLastSaved] = useState<BrandState>(DEFAULT_BRAND);
@@ -47,6 +62,10 @@ function BrandPage() {
   const [section, setSection] = useState<Section>("brand");
   const [previewMode, setPreviewMode] = useState<Mode>("light");
   const [confirmRestore, setConfirmRestore] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [baseId, setBaseId] = useState<"default" | string>("default");
   const [toast, setToast] = useState<string | null>(null);
 
   const checks = useMemo(() => runChecks(state), [state]);
@@ -56,12 +75,49 @@ function BrandPage() {
 
   const set = (patch: Partial<BrandState>) => { setState((s) => ({ ...s, ...patch })); setStatus("dirty"); };
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2800); };
-  const saveDraft = () => { setLastSaved(state); setStatus("saved"); flash("Rascunho salvo. Só você e outros administradores veem estas mudanças."); };
-  const publish = () => { setPublished(state); setLastSaved(state); setStatus("clean"); flash("Identidade publicada para toda a organização."); };
+  const editingProfile = profiles.find((profile) => profile.id === editingId);
+  const saveDraft = () => {
+    if (!editingId) return;
+    setProfiles((items) => items.map((profile) => profile.id === editingId ? { ...profile, name: state.name, state, updatedAt: "Agora" } : profile));
+    setLastSaved(state); setStatus("saved"); flash("Perfil salvo na biblioteca.");
+  };
+  const publish = () => {
+    if (!editingId) return;
+    setProfiles((items) => items.map((profile) => profile.id === editingId ? { ...profile, name: state.name, state, active: true, updatedAt: "Agora" } : { ...profile, active: false }));
+    setPublished(state); setLastSaved(state); setStatus("clean"); flash("Perfil aplicado para toda a organização.");
+  };
   const restore = () => { setState(DEFAULT_BRAND); setStatus("restored"); setConfirmRestore(false); flash("Tema padrão do AuditFlow restaurado. Publique para aplicar."); };
+
+  const openProfile = (profile: BrandProfile) => {
+    setEditingId(profile.id); setState(profile.state); setLastSaved(profile.state);
+    setPublished(profile.active ? profile.state : profiles.find((item) => item.active)?.state ?? DEFAULT_BRAND);
+    setStatus("clean"); setSection("brand"); setView("editor");
+  };
+  const openCreate = (source: "default" | string = "default") => {
+    const sourceProfile = profiles.find((profile) => profile.id === source);
+    setBaseId(sourceProfile?.id ?? "default");
+    setNewName(sourceProfile ? `Cópia de ${sourceProfile.name}` : "Nova identidade visual");
+    setCreateOpen(true);
+  };
+  const createProfile = () => {
+    const source = profiles.find((profile) => profile.id === baseId)?.state ?? DEFAULT_BRAND;
+    const name = newName.trim() || "Nova identidade visual";
+    const id = `perfil-${Date.now()}`;
+    const profile: BrandProfile = { id, name, state: { ...source, name }, active: false, updatedAt: "Agora" };
+    setProfiles((items) => [...items, profile]); setCreateOpen(false); openProfile(profile);
+  };
+  const leaveEditor = () => {
+    if (unsavedDraft) { setConfirmLeave(true); return; }
+    setView("gallery"); setEditingId(null);
+  };
 
   const visibleSections = SECTIONS.filter((s) => advanced || !s.advanced);
   const current = visibleSections.some((s) => s.id === section) ? section : "brand";
+
+  if (view === "gallery") return (
+    <ProfileGallery profiles={profiles} onOpen={openProfile} onCreate={() => openCreate()} onDuplicate={openCreate}
+      createDialog={<CreateProfileDialog open={createOpen} onOpenChange={setCreateOpen} profiles={profiles} baseId={baseId} setBaseId={setBaseId} name={newName} setName={setNewName} onCreate={createProfile} />} />
+  );
 
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
@@ -71,27 +127,25 @@ function BrandPage() {
           <div className="min-w-0">
             <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Link to="/" className="hover:text-foreground">Configurações</Link><ChevronRight className="h-3 w-3" />
-              <span>Organização</span><ChevronRight className="h-3 w-3" />
-              <span className="font-medium text-primary">Identidade visual</span>
+              <button onClick={leaveEditor} className="hover:text-foreground">Identidade visual</button><ChevronRight className="h-3 w-3" />
+              <span className="font-medium text-primary">{editingProfile?.name ?? state.name}</span>
             </nav>
             <div className="mt-1 flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">Identidade visual</h1>
+              <Button variant="ghost" size="icon" onClick={leaveEditor} aria-label="Voltar para perfis" title="Voltar para perfis"><ArrowLeft /></Button>
+              <h1 className="text-2xl font-semibold tracking-tight">{state.name}</h1>
               <StatusPill status={status} unpublished={unpublished} unsavedDraft={unsavedDraft} />
             </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">As alterações valem para todas as pessoas da organização <strong className="font-medium text-foreground">Mendes & Prado Advogados</strong>, após publicadas.</p>
+            <p className="mt-0.5 pl-11 text-sm text-muted-foreground">Edite este perfil e aplique quando quiser usá-lo em toda a organização.</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setConfirmRestore(true)} className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
+            <Button variant="ghost" onClick={() => setConfirmRestore(true)} className="text-muted-foreground">
               <RotateCcw className="h-4 w-4" />Restaurar padrão
-            </button>
-            <button onClick={saveDraft} disabled={!unsavedDraft} className="rounded-md border border-input bg-card px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-40">
-              Salvar rascunho
-            </button>
+            </Button>
+            <Button variant="outline" onClick={saveDraft} disabled={!unsavedDraft}>Salvar perfil</Button>
             <div className="relative group">
-              <button onClick={publish} disabled={!unpublished || blockers.length > 0}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40">
-                {blockers.length > 0 && <Lock className="h-4 w-4" />}Publicar alterações
-              </button>
+              <Button onClick={publish} disabled={blockers.length > 0 || (editingProfile?.active === true && !unpublished)}>
+                {blockers.length > 0 && <Lock className="h-4 w-4" />}Aplicar à organização
+              </Button>
               {blockers.length > 0 && (
                 <div role="tooltip" className="pointer-events-none absolute right-0 top-full z-40 mt-2 w-64 rounded-md bg-foreground p-3 text-xs text-background opacity-0 shadow-lg transition group-hover:opacity-100">
                   Publicação bloqueada: {blockers.length} {blockers.length === 1 ? "problema de legibilidade" : "problemas de legibilidade"} para corrigir.
@@ -198,8 +252,63 @@ function BrandPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AlertDialog open={confirmLeave} onOpenChange={setConfirmLeave}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>Sair sem salvar?</AlertDialogTitle><AlertDialogDescription>As alterações feitas neste perfil serão descartadas.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Continuar editando</AlertDialogCancel><AlertDialogAction onClick={() => { setConfirmLeave(false); setView("gallery"); setEditingId(null); }}>Descartar e sair</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
+}
+
+function ProfileGallery({ profiles, onOpen, onCreate, onDuplicate, createDialog }: { profiles: BrandProfile[]; onOpen: (profile: BrandProfile) => void; onCreate: () => void; onDuplicate: (id: string) => void; createDialog: ReactNode }) {
+  const active = profiles.find((profile) => profile.active);
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-6 lg:px-10">
+          <div><nav className="flex items-center gap-1.5 text-xs text-muted-foreground"><Link to="/" className="hover:text-foreground">Configurações</Link><ChevronRight className="h-3 w-3" /><span>Organização</span></nav><h1 className="mt-2 text-2xl font-semibold">Identidade visual</h1><p className="mt-1 text-sm text-muted-foreground">Escolha um perfil para editar ou crie uma nova identidade.</p></div>
+          <Button onClick={onCreate}><Plus />Novo perfil</Button>
+        </div>
+      </header>
+      <main className="mx-auto max-w-7xl px-6 py-10 lg:px-10">
+        {active && (
+          <section className="mb-10">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Em uso na organização</p>
+            <ProfileRow profile={active} onOpen={onOpen} onDuplicate={onDuplicate} featured />
+          </section>
+        )}
+        <section>
+          <div className="mb-4 flex items-end justify-between"><div><h2 className="text-lg font-semibold">Todos os perfis</h2><p className="text-sm text-muted-foreground">{profiles.length} {profiles.length === 1 ? "perfil salvo" : "perfis salvos"}</p></div></div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {profiles.map((profile) => <ProfileCard key={profile.id} profile={profile} onOpen={onOpen} onDuplicate={onDuplicate} />)}
+            <button onClick={onCreate} className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-input bg-card/40 p-6 text-center transition hover:border-primary hover:bg-primary-soft">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-soft text-primary"><Plus className="h-5 w-5" /></span><span className="font-semibold">Criar novo perfil</span><span className="max-w-52 text-sm text-muted-foreground">Comece pelo padrão ou use um perfil existente como base.</span>
+            </button>
+          </div>
+        </section>
+      </main>
+      {createDialog}
+    </div>
+  );
+}
+
+function ThemeStrip({ state }: { state: BrandState }) {
+  const light = resolveTheme(state, "light");
+  return <div className="flex h-20 overflow-hidden border-b border-border"><div className="w-1/4" style={{ background: light.nav }} /><div className="flex flex-1 items-center gap-2 p-4" style={{ background: light.bg }}><span className="h-8 flex-1 rounded border" style={{ background: light.card, borderColor: light.border }} /><span className="h-8 w-16 rounded" style={{ background: light.brand }} /></div></div>;
+}
+
+function ProfileCard({ profile, onOpen, onDuplicate }: { profile: BrandProfile; onOpen: (profile: BrandProfile) => void; onDuplicate: (id: string) => void }) {
+  return <article className="overflow-hidden rounded-lg border border-border bg-card transition hover:border-primary/40 hover:shadow-sm"><ThemeStrip state={profile.state} /><div className="p-5"><div className="flex items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">{profile.name}</h3>{profile.active && <span className="rounded bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">Em uso</span>}</div><p className="mt-1 text-xs text-muted-foreground">Atualizado {profile.updatedAt}</p></div><span className="h-6 w-6 rounded-full border-4 border-card" style={{ background: profile.state.primary }} /></div><div className="mt-6 flex gap-2"><Button className="flex-1" variant={profile.active ? "outline" : "default"} onClick={() => onOpen(profile)}>Editar perfil</Button><Button variant="ghost" size="icon" onClick={() => onDuplicate(profile.id)} aria-label={`Duplicar ${profile.name}`} title="Duplicar perfil"><Copy /></Button></div></div></article>;
+}
+
+function ProfileRow({ profile, onOpen, onDuplicate, featured }: { profile: BrandProfile; onOpen: (profile: BrandProfile) => void; onDuplicate: (id: string) => void; featured?: boolean }) {
+  return <div className={cn("flex flex-col overflow-hidden rounded-lg border bg-card md:flex-row", featured ? "border-primary/40" : "border-border")}><div className="w-full md:w-72"><ThemeStrip state={profile.state} /></div><div className="flex flex-1 flex-wrap items-center justify-between gap-5 p-5"><div><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-primary" /><h2 className="font-semibold">{profile.name}</h2></div><p className="mt-1 pl-7 text-sm text-muted-foreground">Este é o visual que todas as pessoas veem atualmente.</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => onDuplicate(profile.id)}><Copy />Usar como base</Button><Button onClick={() => onOpen(profile)}>Editar perfil</Button></div></div></div>;
+}
+
+function CreateProfileDialog({ open, onOpenChange, profiles, baseId, setBaseId, name, setName, onCreate }: { open: boolean; onOpenChange: (open: boolean) => void; profiles: BrandProfile[]; baseId: string; setBaseId: (id: string) => void; name: string; setName: (name: string) => void; onCreate: () => void }) {
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-xl"><DialogHeader><DialogTitle>Criar perfil de identidade</DialogTitle><DialogDescription>Escolha um ponto de partida. Você poderá alterar todas as configurações antes de aplicar.</DialogDescription></DialogHeader><div className="space-y-5 py-2"><label className="block"><span className="text-sm font-medium">Nome do perfil</span><Input className="mt-2" value={name} onChange={(event) => setName(event.target.value)} autoFocus /></label><div><p className="text-sm font-medium">Começar a partir de</p><div className="mt-2 max-h-64 space-y-2 overflow-y-auto"><button onClick={() => setBaseId("default")} className={cn("flex w-full items-center gap-3 rounded-md border p-3 text-left", baseId === "default" ? "border-primary bg-primary-soft" : "border-border hover:bg-muted")}><span className="flex h-9 w-9 items-center justify-center rounded bg-muted"><Sparkles className="h-4 w-4" /></span><span className="flex-1"><span className="block text-sm font-medium">Padrão do AuditFlow</span><span className="block text-xs text-muted-foreground">Cores e tipografia originais</span></span>{baseId === "default" && <Check className="h-4 w-4 text-primary" />}</button>{profiles.map((profile) => <button key={profile.id} onClick={() => setBaseId(profile.id)} className={cn("flex w-full items-center gap-3 rounded-md border p-3 text-left", baseId === profile.id ? "border-primary bg-primary-soft" : "border-border hover:bg-muted")}><span className="h-9 w-9 rounded border border-border" style={{ background: profile.state.primary }} /><span className="flex-1"><span className="block text-sm font-medium">{profile.name}</span><span className="block text-xs text-muted-foreground">Copiar todas as configurações</span></span>{baseId === profile.id && <Check className="h-4 w-4 text-primary" />}</button>)}</div></div></div><DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button onClick={onCreate} disabled={!name.trim()}>Criar e editar</Button></DialogFooter></DialogContent></Dialog>;
 }
 
 function StatusPill({ status, unpublished, unsavedDraft }: { status: Status; unpublished: boolean; unsavedDraft: boolean }) {
